@@ -10,6 +10,7 @@ pipeline {
         PYTHONPATH = '.'
         PATH_VENV = '/opt/venv/bin'
         PATH_JMETER = '/opt/jmeter/bin'
+        FLASK_APP='app/api.py'
     }
 
     stages {
@@ -67,7 +68,7 @@ pipeline {
 
         stage('Performance') {
             steps {
-                sh '$PATH_VENV/python app/api.py &' // Run the app in the background
+                sh '$PATH_VENV/flask run &' // Run the app in the background
                 sh 'sleep 3' // Wait for the app to start
 
                 sh '$PATH_JMETER/jmeter -n -t test/jmeter/flask.jmx -f -l flask.jtl'
