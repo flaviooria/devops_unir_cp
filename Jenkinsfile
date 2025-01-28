@@ -39,7 +39,7 @@ pipeline {
 
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     // Formato de baremos cobertura: healthy, unstable, failed => 95, 85, 85 
-                    cobertura autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '100,0,90', lineCoverageTargets: '100,0,95'
+                    cobertura autoUpdateHealth: false, autoUpdateStability: false, onlyStable: false, coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '100,0,90', lineCoverageTargets: '100,0,95'
                 }
 
             }
