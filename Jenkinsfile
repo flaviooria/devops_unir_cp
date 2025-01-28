@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    parameters {
-        choice choices: ['master', 'develop'], name: 'ramas'
-    }
-
 
     environment {
         PYTHONPATH = '.'
@@ -17,7 +13,7 @@ pipeline {
 
         stage('Checkout code') {
             steps {
-                git url:'https://github.com/flaviooria/devops_unir_cp.git', branch: params.ramas
+                git url:'https://github.com/flaviooria/devops_unir_cp.git', branch: 'feature_fix_coverage'
                 sh 'echo $WORKSPACE'
             }
         }
