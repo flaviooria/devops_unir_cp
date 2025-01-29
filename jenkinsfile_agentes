@@ -1,30 +1,42 @@
 pipeline {
-    agent any
+    agent none
+
+    options {
+        skipDefaultCheckout true //avoid auto checkout in slaves nodes
+    }
 
     environment {
         PYTHONPATH = '.'
         PATH_VENV = '/opt/venv/bin'
         PATH_JMETER = '/opt/jmeter/bin'
-        FLASK_APP='app/api.py'
+        FLASK_APP = 'app/api.py'
     }
 
     stages {
         stage('Checkout code') {
             agent {
-                label 'code'
+                label 'agent_principal'
             }
 
             steps {
                 showAgentInfo()
 
                 git 'https://github.com/flaviooria/devops_unir_cp.git'
-                stash name: 'source_code', includes: '**'
+
+            }
+            post {
+                cleanup {
+                    cleanWs();
+                }
+                success {
+                    stash name: 'source_code', includes: '**'
+                }
             }
         }
 
         stage('Run unit test') {
             agent {
-                label 'dev'
+                label 'agent1'
             }
 
             steps {
@@ -36,35 +48,52 @@ pipeline {
                     sh '$PATH_VENV/coverage xml'
                 }
 
-                stash name: 'coverage_report', includes: 'coverage.xml'
                 junit 'result-unit.xml'
+            }
+            post {
+                cleanup {
+                    cleanWs();
+                }
+                success {
+                    stash name: 'coverage_report', includes: 'coverage.xml'
+                    stash name: 'coverage_exec', includes: '.coverage'
+                }
             }
         }
 
         stage('Coverage') {
             agent {
-                label 'dev'
+                label 'agent2'
             }
 
             steps {
                 showAgentInfo()
+                unstash 'source_code'
                 unstash 'coverage_report'
-                sh '$PATH_VENV/coverage report'
-                
+                unstash 'coverage_exec'
+
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '$PATH_VENV/coverage report'
+
                     // Formato de baremos cobertura: healthy, unstable, failed => 95, 85, 85 
                     cobertura autoUpdateHealth: false, autoUpdateStability: false, onlyStable: false, coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '100,0,90', lineCoverageTargets: '100,0,95'
                 }
             }
+            post {
+                cleanup {
+                    cleanWs();
+                }
+            }
         }
 
-        stage('Tests') {
+        stage('Static & Security') {
 
             parallel {
 
                 stage('Static') {
+
                     agent {
-                        label 'tests'
+                        label 'agent1'
                     }
 
                     steps {
@@ -81,14 +110,18 @@ pipeline {
                             ]
                         }
                     }
+                    post {
+                        cleanup {
+                            cleanWs();
+                        }
+                    }
                 }
 
                 stage('Security') {
 
                     agent {
-                        label 'tests'
+                        label 'agent2'
                     }
-
 
                     steps {
                         showAgentInfo()
@@ -104,38 +137,41 @@ pipeline {
                             ]
                         }
                     }
-                }
-
-                stage('Performance') {
-                    agent {
-                        label 'tests'
-                    }
-
-                    steps {
-                        showAgentInfo()
-
-                        unstash 'source_code'
-
-                        sh '$PATH_VENV/flask run &' // Run the app in the background
-                        sh 'sleep 3' // Wait for the app to start
-
-                        sh '$PATH_JMETER/jmeter -n -t test/jmeter/flask.jmx -f -l flask.jtl'
-
-                        perfReport sourceDataFiles: 'flask.jtl'
+                    post {
+                        cleanup {
+                            cleanWs();
+                        }
                     }
                 }
             }
         }
 
-    }
+        stage('Performance') {
 
-    post {
+            agent {
+                label 'agent1'
+            }
 
-        always {
-            cleanWs()
+            steps {
+                showAgentInfo()
+
+                unstash 'source_code'
+
+                sh '$PATH_VENV/flask run &' // Run the app in the background
+                sh 'sleep 3' // Wait for the app to start
+
+                sh '$PATH_JMETER/jmeter -n -t test/jmeter/flask.jmx -f -l flask.jtl'
+
+                perfReport sourceDataFiles: 'flask.jtl'
+            }
+            post {
+                cleanup {
+                    cleanWs();
+                }
+            }
         }
-    }
 
+    }
 }
 
 def showAgentInfo() {
