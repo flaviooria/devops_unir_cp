@@ -86,7 +86,7 @@ pipeline {
             }
         }
 
-        stage('Static & Security') {
+        stage('Static & Security & Performance') {
 
             parallel {
 
@@ -143,31 +143,32 @@ pipeline {
                         }
                     }
                 }
-            }
-        }
 
-        stage('Performance') {
+                stage('Performance') {
 
-            agent {
-                label 'agent1'
-            }
+                    agent {
+                        label 'agent1'
+                    }
 
-            steps {
-                showAgentInfo()
+                    steps {
+                        showAgentInfo()
 
-                unstash 'source_code'
+                        unstash 'source_code'
 
-                sh '$PATH_VENV/flask run &' // Run the app in the background
-                sh 'sleep 3' // Wait for the app to start
+                        sh '$PATH_VENV/flask run &' // Run the app in the background
+                        sh 'sleep 3' // Wait for the app to start
 
-                sh '$PATH_JMETER/jmeter -n -t test/jmeter/flask.jmx -f -l flask.jtl'
+                        sh '$PATH_JMETER/jmeter -n -t test/jmeter/flask.jmx -f -l flask.jtl'
 
-                perfReport sourceDataFiles: 'flask.jtl'
-            }
-            post {
-                cleanup {
-                    cleanWs();
+                        perfReport sourceDataFiles: 'flask.jtl'
+                    }
+                    post {
+                        cleanup {
+                            cleanWs();
+                        }
+                    }
                 }
+
             }
         }
 
